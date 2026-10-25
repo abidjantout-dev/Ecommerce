@@ -3,6 +3,7 @@ import { serveur } from "@/lib/supabase/server";
 import { paliersValides } from "@/lib/validation";
 import { fcfa } from "@/lib/format";
 import type { Product } from "@/lib/types";
+import AvisAlibaba from "@/components/AvisAlibaba";
 import Carrousel from "@/components/Carrousel";
 import FormulaireCommande from "@/components/FormulaireCommande";
 
@@ -78,6 +79,8 @@ export default async function PageProduit({ params }: { params: Promise<{ slug: 
           <h2 id="etapes-titre" className="mt-2 font-display text-2xl font-bold tracking-tight sm:text-3xl">Votre prochain achat, en toute tranquillité.</h2>
           <div className="mt-8 grid gap-7 sm:grid-cols-3 sm:gap-8">{GARANTIES.map(([numero, titre, texte]) => <div key={numero} className="flex gap-4 sm:block"><span className="font-display text-2xl font-bold text-phare/60">{numero}<span className="text-phare">.</span></span><div><h3 className="font-display text-sm font-bold sm:mt-3">{titre}</h3><p className="mt-2 max-w-xs text-sm leading-relaxed text-texte-doux">{texte}</p></div></div>)}</div>
         </section>
+
+        {product.slug === "lunettes-anti-eblouissement" && <AvisAlibaba />}
 
         <section id="commander" className="grid scroll-mt-6 items-start gap-7 py-12 md:grid-cols-[.8fr_1fr] md:gap-16 md:py-20" aria-labelledby="commande-titre">
           <div className="md:pt-6">
