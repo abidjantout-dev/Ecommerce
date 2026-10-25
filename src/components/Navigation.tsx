@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { navigateur } from "@/lib/supabase/client";
@@ -14,8 +15,10 @@ export default function Navigation({ email }: { email: string }) {
   const chemin = usePathname();
   const router = useRouter();
 
+  const [erreur, setErreur] = useState(false);
   async function sortir() {
-    await navigateur().auth.signOut();
+    const { error } = await navigateur().auth.signOut();
+    if (error) { setErreur(true); return; }
     router.replace("/admin/connexion");
     router.refresh();
   }
@@ -28,6 +31,7 @@ export default function Navigation({ email }: { email: string }) {
           Déconnexion
         </button>
       </div>
+      {erreur && <p role="alert">Déconnexion impossible. Réessayez.</p>}
       <p className="mt-0.5 truncate text-xs text-texte-doux">{email}</p>
 
       <nav className="mt-3 flex gap-1.5 overflow-x-auto">

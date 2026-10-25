@@ -3,6 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /** Rafraîchit la session et ferme /admin aux visiteurs non connectés. */
 export async function middleware(request: NextRequest) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return new NextResponse("Configuration Supabase manquante. Consultez .env.example.", { status: 503 });
+  }
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -24,22 +27,30 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   const chemin = request.nextUrl.pathname;
+  const { data: admin } = user ? await supabase.rpc("is_admin") : { data: false };
+  if (user && !admin && chemin !== "/admin/connexion") {
+    return new NextResponse("Accès réservé aux administrateurs.", { status: 403 });
+  }
 
   if (chemin.startsWith("/admin") && chemin !== "/admin/connexion" && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/connexion";
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    response.cookies.getAll().forEach(c => redirect.cookies.set(c));
+    return redirect;
   }
 
-  if (chemin === "/admin/connexion" && user) {
+  if (chemin === "/admin/connexion" && user && admin) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    response.cookies.getAll().forEach(c => redirect.cookies.set(c));
+    return redirect;
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)"],
+  matcher: ["/admin/:path*"],
 };

@@ -119,3 +119,28 @@ src/components/            Carrousel, formulaire, commandes, produits, dépenses
 src/app/p/[slug]/          Page de vente publique
 src/app/admin/             Tableau de bord
 ```
+
+## Mise à jour de sécurité (audit du 25 octobre 2026)
+
+Prérequis : **Node.js >= 20.9** (Node 22 recommandé), Next.js 16.
+
+Pour une base **existante**, exécutez
+`supabase/migrations/20261025_security.sql` dans SQL Editor **avant de publier le
+nouveau frontend**. Pour une base neuve, `schema.sql` inclut déjà cette migration.
+La migration retire les droits administrateur implicites des comptes connectés.
+Ajoutez explicitement chaque administrateur (UUID depuis Authentication → Users) :
+
+```sql
+insert into public.admin_users(user_id)
+values ('UUID-DU-COMPTE-ADMIN') on conflict do nothing;
+```
+
+Cette table ne se modifie que depuis SQL Editor / un rôle privilégié. Ne mettez
+jamais de clé privilégiée dans le navigateur. Les inscriptions publiques peuvent
+rester désactivées, mais leur désactivation n'est plus la barrière de sécurité.
+La commande publique passe par `place_order` : prix et référence sont calculés en
+base sans exposer la lecture des coordonnées des autres clients.
+
+Vérifications locales : `npm ci`, `npm test`, `npm run lint`,
+`npm run typecheck`, `npm run build`. Voir `AUDIT.md` pour les limites et les tests
+à effectuer avec votre base réelle.

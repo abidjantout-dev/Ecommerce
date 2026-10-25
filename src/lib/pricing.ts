@@ -1,12 +1,10 @@
 import type { Product, Tier } from "./types";
 
-/** Le palier correspondant à une quantité, ou le plus proche en dessous. */
+/** Chaque palier est un pack à prix total : aucune quantité intermédiaire. */
 export function palier(product: Product, qty: number): Tier {
-  const tiers = [...product.tiers].sort((a, b) => a.qty - b.qty);
-  const exact = tiers.find((t) => t.qty === qty);
-  if (exact) return exact;
-  const dessous = tiers.filter((t) => t.qty <= qty).pop();
-  return dessous ?? tiers[0];
+  const tier = product.tiers.find(t => t.qty === qty);
+  if (!tier || !Number.isSafeInteger(qty) || qty <= 0) throw new Error("Quantité indisponible");
+  return tier;
 }
 
 export function calcul(product: Product, qty: number) {

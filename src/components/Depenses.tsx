@@ -32,13 +32,15 @@ export default function Depenses({
 
   async function ajouter(e: React.FormEvent) {
     e.preventDefault();
-    if (!label.trim() || amount <= 0) {
+    if (envoi) return;
+    if (!label.trim() || !Number.isSafeInteger(amount) || amount <= 0 || !spentOn) {
       setErreur("Indiquez un libellé et un montant.");
       return;
     }
     setEnvoi(true);
     setErreur(null);
 
+    try {
     const { data, error } = await supabase
       .from("expenses")
       .insert({
@@ -51,15 +53,19 @@ export default function Depenses({
     setEnvoi(false);
     if (error) { setErreur(error.message); return; }
 
-    setDepenses([data as Expense, ...depenses]);
+    setDepenses(l => [data as Expense, ...l]);
     setLabel(""); setAmount(0);
+    } catch { setErreur("Ajout impossible. Réessayez."); }
+    finally { setEnvoi(false); }
   }
 
   async function supprimer(d: Expense) {
-    const avant = depenses;
-    setDepenses(depenses.filter((x) => x.id !== d.id));
-    const { error } = await supabase.from("expenses").delete().eq("id", d.id);
-    if (error) setDepenses(avant);
+    if (!window.confirm("Supprimer cette dépense ?")) return;
+    try {
+      const { error } = await supabase.from("expenses").delete().eq("id", d.id);
+      if (error) throw error;
+      setDepenses(l => l.filter(x => x.id !== d.id));
+    } catch { setErreur("Suppression impossible. Réessayez."); }
   }
 
   return (

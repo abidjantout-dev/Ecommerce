@@ -15,16 +15,19 @@ export default function Connexion() {
     setEnvoi(true);
     setErreur(null);
 
-    const { error } = await navigateur().auth.signInWithPassword({
-      email: email.trim(),
-      password: motDePasse,
-    });
-
-    setEnvoi(false);
-    if (error) {
-      setErreur("Email ou mot de passe incorrect.");
+    try {
+      const supabase = navigateur();
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: motDePasse });
+      if (error) throw new Error("Email ou mot de passe incorrect.");
+      const { data: admin, error: roleError } = await supabase.rpc("is_admin");
+      if (roleError || !admin) {
+        await supabase.auth.signOut();
+        throw new Error("Ce compte n'est pas administrateur.");
+      }
+    } catch (error) {
+      setErreur(error instanceof Error ? error.message : "Connexion impossible.");
       return;
-    }
+    } finally { setEnvoi(false); }
     router.replace("/admin");
     router.refresh();
   }
@@ -37,12 +40,12 @@ export default function Connexion() {
       <form onSubmit={entrer} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="email" className="text-sm font-semibold">Email</label>
-          <input id="email" type="email" autoComplete="email" value={email}
+          <input id="email" type="email" required autoComplete="email" value={email}
             onChange={(e) => setEmail(e.target.value)} className={input} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="mdp" className="text-sm font-semibold">Mot de passe</label>
-          <input id="mdp" type="password" autoComplete="current-password" value={motDePasse}
+          <input id="mdp" type="password" required autoComplete="current-password" value={motDePasse}
             onChange={(e) => setMotDePasse(e.target.value)} className={input} />
         </div>
 
