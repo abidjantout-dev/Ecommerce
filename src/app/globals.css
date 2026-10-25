@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+body {
+  background: #0D0F14;
+  color: #EDEFF3;
+  font-family: Figtree, "Segoe UI", system-ui, sans-serif;
+}
+
+/* Rail du carrousel : défilement horizontal aimanté, sans barre visible */
+.rail { scrollbar-width: none; }
+.rail::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
