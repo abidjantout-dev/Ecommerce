@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 
 /** La racine mène au premier produit actif. */
 export default async function Accueil() {
-  const supabase = serveur();
-  const { data } = await supabase
+  const supabase = await serveur();
+  const { data, error } = await supabase
     .from("products")
     .select("slug")
     .eq("active", true)
@@ -14,6 +14,7 @@ export default async function Accueil() {
     .limit(1)
     .maybeSingle();
 
+  if (error) throw new Error("Catalogue indisponible");
   if (data?.slug) redirect(`/p/${data.slug}`);
 
   return (

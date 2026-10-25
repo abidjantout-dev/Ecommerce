@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { navigateur } from "@/lib/supabase/client";
+import { paliersValides } from "@/lib/validation";
 import { fcfa } from "@/lib/format";
 import type { Product, Tier, ProductImage } from "@/lib/types";
 
@@ -82,13 +83,19 @@ function Editeur({ base, id, onFini }: {
   const [envoi, setEnvoi] = useState(false);
 
   async function enregistrer() {
+    if (envoi) return;
     if (!f.slug.trim() || !f.name.trim()) {
       setErreur("Le nom et l'adresse de la page sont obligatoires.");
       return;
     }
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(f.slug.trim().toLowerCase().replace(/\s+/g, "-")) ||
+        !paliersValides(tiers) || [f.cost_price, f.delivery_fee, f.delivery_cost, f.stock_initial].some(n => !Number.isSafeInteger(n) || n < 0)) {
+      setErreur("Vérifiez l'adresse, les montants et les paliers (quantités uniques et positives)."); return;
+    }
     setEnvoi(true);
     setErreur(null);
 
+    try {
     const supabase = navigateur();
     const corps = {
       ...f,
@@ -104,6 +111,8 @@ function Editeur({ base, id, onFini }: {
     setEnvoi(false);
     if (error) { setErreur(error.message); return; }
     onFini();
+    } catch { setErreur("Enregistrement impossible. Réessayez."); }
+    finally { setEnvoi(false); }
   }
 
   return (
@@ -124,7 +133,7 @@ function Editeur({ base, id, onFini }: {
       </div>
 
       <Section titre="Paliers de prix"
-        action={() => setTiers([...tiers, { qty: tiers.length + 1, price: 0, free_delivery: true }])}>
+        action={() => setTiers([...tiers, { qty: Math.max(0, ...tiers.map(t => t.qty)) + 1, price: 0, free_delivery: true }])}>
         {tiers.map((t, i) => (
           <div key={i} className="flex flex-wrap items-end gap-2">
             <Nombre l="Quantité" v={t.qty} petit
@@ -209,7 +218,7 @@ function Nombre({ l, v, on, petit }: {
   return (
     <div className={"mb-1 flex flex-col gap-1.5 " + (petit ? "w-28" : "")}>
       <label className="text-sm font-semibold">{l}</label>
-      <input type="number" inputMode="numeric" value={v}
+      <input type="number" min="0" step="1" inputMode="numeric" value={v}
         onChange={(e) => on(Number(e.target.value) || 0)} className={champ} />
     </div>
   );

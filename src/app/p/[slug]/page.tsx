@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { serveur } from "@/lib/supabase/server";
+import { paliersValides } from "@/lib/validation";
 import { fcfa } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import Carrousel from "@/components/Carrousel";
@@ -7,10 +8,12 @@ import FormulaireCommande from "@/components/FormulaireCommande";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const supabase = serveur();
-  const { data } = await supabase
-    .from("products").select("name, tagline").eq("slug", params.slug).maybeSingle();
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const supabase = await serveur();
+  const { data, error } = await supabase
+    .from("products").select("name, tagline").eq("slug", slug).maybeSingle();
+  if (error) throw new Error("Catalogue indisponible");
   return { title: data?.name ?? "Moïva", description: data?.tagline ?? undefined };
 }
 
@@ -21,13 +24,16 @@ const BADGES = [
   ["En stock", "Expédié depuis Abidjan"],
 ];
 
-export default async function PageProduit({ params }: { params: { slug: string } }) {
-  const supabase = serveur();
-  const { data } = await supabase
-    .from("products").select("*").eq("slug", params.slug).eq("active", true).maybeSingle();
+export default async function PageProduit({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const supabase = await serveur();
+  const { data, error } = await supabase
+    .from("products").select("*").eq("slug", slug).eq("active", true).maybeSingle();
 
+  if (error) throw new Error("Catalogue indisponible");
   if (!data) notFound();
   const product = data as Product;
+  if (!paliersValides(product.tiers)) notFound();
   const paliers = [...product.tiers].sort((a, b) => a.qty - b.qty);
   const unite = paliers[0];
   const pack = paliers.find((t) => t.free_delivery) ?? paliers[1];
@@ -78,8 +84,7 @@ export default async function PageProduit({ params }: { params: { slug: string }
               {fcfa(pack.price)}
             </p>
             <p className="mt-0.5 text-xs text-texte-doux">
-              Livraison offerte · vous économisez{" "}
-              {fcfa(unite.price * pack.qty + product.delivery_fee - pack.price)}
+              {pack.free_delivery ? "Livraison offerte" : `+ ${fcfa(product.delivery_fee)} de livraison`}
             </p>
           </div>
         )}
@@ -87,7 +92,7 @@ export default async function PageProduit({ params }: { params: { slug: string }
 
       <FormulaireCommande product={product} />
 
-      <footer className="mt-9 flex flex-col gap-1.5 border-t border-bord pt-4.5 text-[13px] text-texte-doux">
+      <footer className="mt-9 flex flex-col gap-1.5 border-t border-bord pt-[18px] text-[13px] text-texte-doux">
         <p><b className="font-semibold text-texte">Moïva — Abidjan.</b> Livraison sous 24 à 48 h.</p>
       </footer>
     </main>

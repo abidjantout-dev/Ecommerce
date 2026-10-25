@@ -1,3 +1,4 @@
+import { toutes } from "@/lib/supabase/all";
 import { serveur } from "@/lib/supabase/server";
 import { fcfa } from "@/lib/format";
 import { margeBrute } from "@/lib/pricing";
@@ -7,16 +8,10 @@ import Statistique from "@/components/Statistique";
 export const dynamic = "force-dynamic";
 
 export default async function PageMarges() {
-  const supabase = serveur();
-  const [{ data: o }, { data: p }, { data: e }] = await Promise.all([
-    supabase.from("orders").select("*"),
-    supabase.from("products").select("*"),
-    supabase.from("expenses").select("*"),
+  const supabase = await serveur();
+  const [commandes, produits, depenses] = await Promise.all([
+    toutes<Order>(supabase, "orders"), toutes<Product>(supabase, "products"), toutes<Expense>(supabase, "expenses"),
   ]);
-
-  const commandes = (o ?? []) as Order[];
-  const produits = (p ?? []) as Product[];
-  const depenses = (e ?? []) as Expense[];
 
   const livrees = commandes.filter((c) => c.status === "livree");
   const parId = Object.fromEntries(produits.map((x) => [x.id, x])) as Record<string, Product>;

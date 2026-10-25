@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { navigateur } from "@/lib/supabase/client";
 import { calcul } from "@/lib/pricing";
+import { telephone } from "@/lib/validation";
 import { fcfa } from "@/lib/format";
 import { COMMUNES, type Product } from "@/lib/types";
 
@@ -23,13 +24,14 @@ export default function FormulaireCommande({ product }: { product: Product }) {
 
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
+  const [totalConfirme, setTotalConfirme] = useState<number | null>(null);
   const [ref, setRef] = useState<string | null>(null);
 
   const montant = calcul(product, qty);
 
   function premierManquant(): [Champ, string] | null {
     if (!nom.trim()) return ["nom", "Indiquez vos nom et prénoms."];
-    if (tel.replace(/\D/g, "").length < 8)
+    if (!telephone(tel))
       return ["tel", "Indiquez un numéro WhatsApp valide pour qu'on vous joigne."];
     if (!commune) return ["commune", "Choisissez votre commune."];
     if (!quartier.trim()) return ["quartier", "Indiquez votre quartier et un repère pour le livreur."];
@@ -38,6 +40,8 @@ export default function FormulaireCommande({ product }: { product: Product }) {
 
   async function envoyer(e: React.FormEvent) {
     e.preventDefault();
+    if (envoi) return;
+    if (tel2.trim() && !telephone(tel2)) { setErreur("Le second numéro est invalide."); return; }
     const manque = premierManquant();
     if (manque) {
       setErreur(manque[1]);
@@ -48,36 +52,23 @@ export default function FormulaireCommande({ product }: { product: Product }) {
     setErreur(null);
     setEnvoi(true);
 
-    const supabase = navigateur();
-    const { data, error } = await supabase
-      .from("orders")
-      .insert({
-        product_id: product.id,
-        customer_name: nom.trim(),
-        phone: tel.trim(),
-        phone2: tel2.trim() || null,
-        commune,
-        quartier: quartier.trim(),
-        note: note.trim() || null,
-        qty,
-        goods_total: montant.goods_total,
-        delivery_fee: montant.delivery_fee,
-        total: montant.total,
-      })
-      .select("ref")
-      .single();
-
-    setEnvoi(false);
-
-    if (error) {
-      setErreur("La commande n'a pas pu être enregistrée. Réessayez, ou écrivez-nous sur WhatsApp.");
-      return;
-    }
-    setRef(data.ref);
+    try {
+      const { data, error } = await navigateur().rpc("place_order", {
+        p_product_id: product.id, p_qty: qty,
+        p_customer_name: nom.trim(), p_phone: telephone(tel),
+        p_phone2: tel2.trim() ? telephone(tel2) : null,
+        p_commune: commune, p_quartier: quartier.trim(), p_note: note.trim() || null,
+      });
+      if (error || !data) throw new Error("Commande refusée");
+      setTotalConfirme(data.total);
+      setRef(data.ref);
+    } catch {
+      setErreur("La commande n'a pas pu être enregistrée. Réessayez ou contactez-nous sur WhatsApp.");
+    } finally { setEnvoi(false); }
   }
 
   if (ref) {
-    const numero = process.env.NEXT_PUBLIC_WHATSAPP;
+    const numero = telephone(process.env.NEXT_PUBLIC_WHATSAPP ?? "");
     const message = encodeURIComponent(
       `Bonjour, je viens de passer la commande ${ref} (${qty} ${qty > 1 ? "paires" : "paire"}).`
     );
@@ -89,7 +80,7 @@ export default function FormulaireCommande({ product }: { product: Product }) {
           dans la journée pour confirmer l&apos;heure de passage du livreur.
         </p>
         <p className="mt-2 text-texte-doux">
-          Vous payez <b className="text-texte">{fcfa(montant.total)}</b> au livreur, après avoir
+          Vous payez <b className="text-texte">{fcfa(totalConfirme ?? montant.total)}</b> au livreur, après avoir
           vu le produit.
         </p>
         {numero && (
@@ -160,7 +151,7 @@ export default function FormulaireCommande({ product }: { product: Product }) {
             className={input + " min-h-[62px] resize-y"} />
         </Champ>
 
-        {erreur && <p className="-mt-2 mb-4 text-sm text-rouge">{erreur}</p>}
+        {erreur && <p role="alert" className="-mt-2 mb-4 text-sm text-rouge">{erreur}</p>}
 
         <div className="mb-4 flex items-baseline justify-between border-t border-bord pt-4">
           <span className="text-sm text-texte-doux">

@@ -40,7 +40,7 @@ export default function Commandes({
           }
           if (charge.eventType === "UPDATE") {
             const maj = charge.new as Order;
-            return actuelles.map((o) => (o.id === maj.id ? maj : o));
+            return actuelles.some(o => o.id === maj.id) ? actuelles.map((o) => (o.id === maj.id ? maj : o)) : [maj, ...actuelles];
           }
           if (charge.eventType === "DELETE") {
             const vieille = charge.old as Order;
@@ -54,28 +54,23 @@ export default function Commandes({
     return () => { supabase.removeChannel(canal); };
   }, [supabase]);
 
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [occupes, setOccupes] = useState<string[]>([]);
+  async function modifier(o: Order, valeurs: Partial<Order>) {
+    if (occupes.includes(o.id)) return;
+    setOccupes(ids => [...ids, o.id]);
+    setErreur(null);
+    try {
+      const { data, error } = await supabase.from("orders").update(valeurs).eq("id", o.id).select("*").single();
+      if (error) throw error;
+      setCommandes(l => l.map(x => x.id === o.id ? data as Order : x));
+    } catch { setErreur("Modification impossible. Réessayez."); }
+    finally { setOccupes(ids => ids.filter(id => id !== o.id)); }
+  }
   async function changerStatut(o: Order, statut: OrderStatus) {
-    const avant = commandes;
-    setCommandes((l) => l.map((x) => (x.id === o.id ? { ...x, status: statut } : x)));
-
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        status: statut,
-        delivered_at: statut === "livree" ? new Date().toISOString() : null,
-      })
-      .eq("id", o.id);
-
-    if (error) setCommandes(avant);
+    await modifier(o, { status: statut, delivered_at: statut === "livree" ? new Date().toISOString() : null });
   }
-
-  async function basculerRelance(o: Order) {
-    const avant = commandes;
-    setCommandes((l) => l.map((x) => (x.id === o.id ? { ...x, followed_up: !x.followed_up } : x)));
-    const { error } = await supabase
-      .from("orders").update({ followed_up: !o.followed_up }).eq("id", o.id);
-    if (error) setCommandes(avant);
-  }
+  async function basculerRelance(o: Order) { await modifier(o, { followed_up: !o.followed_up }); }
 
   const visibles = filtre === "toutes" ? commandes : commandes.filter((o) => o.status === filtre);
 
@@ -91,6 +86,7 @@ export default function Commandes({
 
   return (
     <>
+      {erreur && <p role="alert" className="text-rouge">{erreur}</p>}
       <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Statistique libelle="À traiter" valeur={String(aTraiter)}
           detail={aTraiter > 0 ? "en attente d'appel" : "tout est traité"}
@@ -171,12 +167,12 @@ export default function Commandes({
                   {(["nouvelle", "confirmee", "livree", "annulee"] as OrderStatus[])
                     .filter((s) => s !== o.status)
                     .map((s) => (
-                      <button key={s} onClick={() => changerStatut(o, s)}
+                      <button disabled={occupes.includes(o.id)} key={s} onClick={() => changerStatut(o, s)}
                         className="rounded-lg border border-bord px-3 py-2 text-sm font-semibold text-texte-doux transition hover:text-texte">
                         {STATUS_LABEL[s]}
                       </button>
                     ))}
-                  <button onClick={() => basculerRelance(o)}
+                  <button disabled={occupes.includes(o.id)} onClick={() => basculerRelance(o)}
                     className={
                       "rounded-lg px-3 py-2 text-sm font-semibold transition " +
                       (o.followed_up
