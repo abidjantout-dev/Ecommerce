@@ -62,14 +62,14 @@ export default async function PageProduit({ params }: { params: Promise<{ slug: 
               <span><span aria-hidden="true" className="mr-1.5 text-phare">✓</span> Sans paiement en ligne</span>
               <span><span aria-hidden="true" className="mr-1.5 text-phare">✓</span> Livraison à Abidjan</span>
             </div>
-            <section aria-label="Nos offres" className="grid gap-3 sm:grid-cols-2">
-              {paliers.map((tier, i) => <div key={tier.qty} className={`relative rounded-2xl border p-4 ${i === 0 ? "border-phare/60 bg-phare/[.06]" : "border-white/10 bg-asphalte/60"}`}>
+            <section aria-label="Nos offres" className="grid grid-cols-2 gap-2 sm:gap-3">
+              {paliers.map((tier, i) => <div key={tier.qty} className={`relative min-w-0 rounded-xl border p-3 sm:rounded-2xl sm:p-4 ${i === 0 ? "border-phare/60 bg-phare/[.06]" : "border-white/10 bg-asphalte/60"}`}>
                 <p className="text-[10px] font-bold uppercase tracking-[.16em] text-texte-doux">{tier.qty === 1 ? "À l’unité" : `Pack de ${tier.qty}`}</p>
-                <p className="mt-2 font-display text-[28px] font-black tracking-tight">{fcfa(tier.price)}</p>
-                <p className={`mt-1 text-xs ${tier.free_delivery ? "text-phare" : "text-texte-doux"}`}>{tier.free_delivery ? "Livraison offerte" : `+ ${fcfa(product.delivery_fee)} de livraison`}</p>
+                <p className="mt-1 font-display text-xl font-black tracking-tight sm:mt-2 sm:text-[28px]">{fcfa(tier.price)}</p>
+                <p className={`mt-0.5 text-[11px] leading-snug sm:mt-1 sm:text-xs ${tier.free_delivery ? "text-phare" : "text-texte-doux"}`}>{tier.free_delivery ? "Livraison offerte" : `+ ${fcfa(product.delivery_fee)} de livraison`}</p>
               </div>)}
             </section>
-            <a href="#commander" className="mt-6 flex items-center justify-between rounded-xl bg-phare px-5 py-4 font-display font-bold text-nuit transition hover:bg-[#ffdb4d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-phare">Commander maintenant <span aria-hidden="true">↗</span></a>
+            <a href="#commander" className="mt-3 flex sm:mt-6 items-center justify-between rounded-xl bg-phare px-5 py-4 font-display font-bold text-nuit transition hover:bg-[#ffdb4d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-phare">Commander maintenant <span aria-hidden="true">↗</span></a>
             <p className="mt-3 text-center text-xs text-texte-doux">Rien à avancer. Vous payez à la réception.</p>
           </div>
         </section>
